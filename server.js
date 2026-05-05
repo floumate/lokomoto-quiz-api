@@ -47,11 +47,12 @@ app.use(cors({
 
 // Rate limiting - zaštita od spam-a
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minuta
-  max: 100, // max 100 zahteva po IP-u u 15 min
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 500 : 10000,
   message: { error: 'Previše zahteva, pokušaj ponovo za nekoliko minuta.' },
   standardHeaders: true,
   legacyHeaders: false,
+  trustProxy: true,
 });
 
 app.use('/api/', apiLimiter);
