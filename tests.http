@@ -1,0 +1,224 @@
+### ============================================
+### LOKOMOTO QUIZ API - TESTOVI
+### ============================================
+
+@baseUrl = http://localhost:3000
+
+
+### Test 1: Health check
+GET {{baseUrl}}/api/health
+
+
+### Test 2: Kreiraj novu sesiju
+# @name createSession
+POST {{baseUrl}}/api/sessions
+Content-Type: application/json
+
+{
+  "user_agent": "Mozilla/5.0 Test Browser",
+  "referrer": "https://google.com",
+  "utm_source": "facebook",
+  "utm_campaign": "test_campaign",
+  "device_type": "desktop"
+}
+
+
+### Test 3: Update sesije sa polom (zameni SESSION_ID iz Test 2)
+@sessionId = {{createSession.response.body.session_id}}
+
+PATCH {{baseUrl}}/api/sessions/{{sessionId}}
+Content-Type: application/json
+
+{
+  "gender": "male",
+  "current_step": "gender",
+  "current_step_number": 2
+}
+
+
+### Test 4: Update sa lokacijom bola
+PATCH {{baseUrl}}/api/sessions/{{sessionId}}
+Content-Type: application/json
+
+{
+  "pain_location": "lower",
+  "current_step": "pain_location",
+  "current_step_number": 3
+}
+
+
+### Test 5: Update sa odgovorima i scale
+PATCH {{baseUrl}}/api/sessions/{{sessionId}}
+Content-Type: application/json
+
+{
+  "pain_radiates": true,
+  "diagnosis": "hernia",
+  "answers": {
+    "pain_frequency": { "value": "B", "text": "Povremeno, ali kad krene jako udara" },
+    "pain_description": { "value": "B", "text": "Oštar bol kao da probada" }
+  },
+  "pain_scale": 7,
+  "pain_duration": "5 godina",
+  "current_step": "pain_scale",
+  "current_step_number": 7
+}
+
+
+### Test 6: Loguj step_viewed event
+POST {{baseUrl}}/api/events
+Content-Type: application/json
+
+{
+  "session_id": "{{sessionId}}",
+  "event_type": "step_viewed",
+  "step_number": 5,
+  "step_name": "pain_frequency"
+}
+
+
+### Test 7: Loguj step_completed event sa vremenom
+POST {{baseUrl}}/api/events
+Content-Type: application/json
+
+{
+  "session_id": "{{sessionId}}",
+  "event_type": "step_completed",
+  "step_number": 5,
+  "step_name": "pain_frequency",
+  "time_on_step": 12,
+  "metadata": { "answer": "B" }
+}
+
+
+### Test 8: Update sa goals
+PATCH {{baseUrl}}/api/sessions/{{sessionId}}
+Content-Type: application/json
+
+{
+  "goals": [
+    "Da se probudiš bez bola i ponovo uživaš u svakom danu",
+    "Da rešiš problem bez operacije i dugoročnog oslanjanja na lekove"
+  ],
+  "current_step": "goals",
+  "current_step_number": 17
+}
+
+
+### Test 9: Kompletiraj sesiju (lead capture)
+POST {{baseUrl}}/api/sessions/{{sessionId}}/complete
+Content-Type: application/json
+
+{
+  "name": "Marko Test",
+  "email": "marko.test@example.com"
+}
+
+
+### Test 10: Pokušaj update SESSIONA koji ne postoji (treba 404)
+PATCH {{baseUrl}}/api/sessions/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "gender": "female"
+}
+
+
+### Test 11: Pokušaj kompletiranje BEZ email-a (treba 400)
+POST {{baseUrl}}/api/sessions/{{sessionId}}/complete
+Content-Type: application/json
+
+{
+  "name": "Bez email-a"
+}
+
+### ============================================
+### AUTH TESTOVI
+### ============================================
+
+### Login (zameni email/password sa onima koje si uneo u bootstrap)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "danilo@floumate.com",
+  "password": "Danilo_Floumate123!"
+}
+
+
+### Vrati podatke o ulogovanom (koristi token iz Login odgovora)
+@authToken = {{login.response.body.token}}
+
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{authToken}}
+
+
+### Test pogrešnog passworda
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dusan@email.com",
+  "password": "pogresan"
+}
+
+
+### Test bez tokena (treba 401)
+GET {{baseUrl}}/api/auth/me
+
+
+### Registracija novog korisnika - kao admin
+POST {{baseUrl}}/api/auth/register
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "email": "klijent@lokomoto.com",
+  "password": "ClijentLozinka123",
+  "name": "Lokomoto Klijent",
+  "role": "client"
+}
+
+### ============================================
+### DASHBOARD TESTOVI
+### Svi zahtevaju Authorization header sa tokenom
+### ============================================
+
+### KPI stats
+GET {{baseUrl}}/api/dashboard/stats
+Authorization: Bearer {{authToken}}
+
+
+### Funnel statistika (drop-off po koraku)
+GET {{baseUrl}}/api/dashboard/funnel
+Authorization: Bearer {{authToken}}
+
+
+### Lista svih sesija (page 1)
+GET {{baseUrl}}/api/dashboard/sessions?page=1&limit=10
+Authorization: Bearer {{authToken}}
+
+
+### Lista samo kompletiranih
+GET {{baseUrl}}/api/dashboard/sessions?status=completed
+Authorization: Bearer {{authToken}}
+
+
+### Filter po dijagnozi (hernija)
+GET {{baseUrl}}/api/dashboard/sessions?diagnosis=hernia
+Authorization: Bearer {{authToken}}
+
+
+### Lista leadova (samo sa email-om)
+GET {{baseUrl}}/api/dashboard/leads
+Authorization: Bearer {{authToken}}
+
+
+### CSV export leadova
+GET {{baseUrl}}/api/dashboard/leads/export
+Authorization: Bearer {{authToken}}
+
+
+### Test bez tokena - treba 401
+GET {{baseUrl}}/api/dashboard/stats
