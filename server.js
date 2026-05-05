@@ -25,14 +25,20 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Dozvoli zahteve bez origin-a (npr. Postman, curl)
+    // Dozvoli zahteve bez origin-a (npr. Postman, curl, server-to-server)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`Origin ${origin} nije dozvoljen od strane CORS politike`));
+    // Wildcard - dozvoli sve origin-e
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
     }
+
+    // Specifične origin liste
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error(`Origin ${origin} nije dozvoljen od strane CORS politike`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
